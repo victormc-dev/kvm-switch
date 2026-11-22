@@ -1,8 +1,11 @@
 {
   "name": "kvm-switch",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "基于 USB UVC 采集卡 + USB HID 双头控制的跨平台 KVM 软件",
-  "author": "KVM Switch",
+  "author": {
+    "name": "KVM Switch",
+    "email": "victormc-dev@users.noreply.github.com"
+  },
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",

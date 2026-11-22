@@ -49,6 +49,18 @@ jobs:
       - name: 安装 npm 依赖
         run: npm ci
 
+      # Windows 源码编译原生模块需要 MSVC（node-gyp 找不到 VS 会失败）
+      - name: 初始化 MSVC 编译环境 (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      # macOS 的 Python 3.12 移除了 distutils，node-gyp 需要它；固定到 3.11
+      - name: 安装 Python 3.11 (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       # 原生依赖：node-hid / serialport 必须按 Electron 的 ABI 重编译，
       # 否则运行时报 NODE_MODULE_VERSION 不匹配。install-app-deps 会优先
       # 下载匹配 Electron 的 prebuilt，取不到再本地源码编译。
