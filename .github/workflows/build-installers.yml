@@ -56,9 +56,9 @@ jobs:
         if: matrix.os == 'windows-2022'
         uses: ilammy/msvc-dev-cmd@v1
 
-      # macOS 的 Python 3.12 移除了 distutils，node-gyp 需要它；固定到 3.11
-      - name: 安装 Python 3.11 (macOS)
-        if: matrix.os == 'macos-latest'
+      # runner 自带 Python 3.12 移除了 distutils，node-gyp 需要它；
+      # 三个平台统一固定到 3.11，避免 Windows/macOS 源码编译原生模块失败
+      - name: 安装 Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
