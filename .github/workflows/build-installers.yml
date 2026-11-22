@@ -18,7 +18,9 @@ jobs:
       fail-fast: false   # 单个平台失败不影响其余平台
       matrix:
         include:
-          - os: windows-latest
+          # 用 windows-2022：自带 VS2022(v17)，node-gyp 可识别；
+          # windows-latest 已升级到 VS2026(v18)，node-gyp 找不到会编译失败
+          - os: windows-2022
             name: windows
             args: --win
           - os: macos-latest
@@ -51,7 +53,7 @@ jobs:
 
       # Windows 源码编译原生模块需要 MSVC（node-gyp 找不到 VS 会失败）
       - name: 初始化 MSVC 编译环境 (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'windows-2022'
         uses: ilammy/msvc-dev-cmd@v1
 
       # macOS 的 Python 3.12 移除了 distutils，node-gyp 需要它；固定到 3.11
