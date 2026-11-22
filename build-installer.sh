@@ -14,6 +14,9 @@ cd "$( dirname "${BASH_SOURCE[0]}" )"
 echo "=== 1/3 编译前端 ==="
 npm run build
 
+echo "=== 1.5/3 预置 winCodeSign 缓存（绕过符号链接权限问题） ==="
+bash "$(dirname "${BASH_SOURCE[0]}")/build/fix-wincodesign.sh"
+
 echo "=== 2/3 打包（输出到临时目录，绕过沙箱文件锁） ==="
 # 系统临时目录（Windows 格式转正斜杠）
 TMP_OUT="$( cygpath -m "$LOCALAPPDATA/Temp/kvm-release" 2>/dev/null || echo "$LOCALAPPDATA/Temp/kvm-release" )"
