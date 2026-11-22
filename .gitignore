@@ -1,0 +1,21 @@
+node_modules
+dist
+release
+release2
+out
+logs
+.workbuddy
+*.log
+.DS_Store
+
+# 固件编译产物
+firmware/*.o
+firmware/*.elf
+firmware/*.hex
+firmware/*.bin
+firmware/*.map
+firmware/User/*.o
+firmware/Core/*.o
+firmware/Debug/*.o
+firmware/Peripheral/src/*.o
+firmware/Startup/*.o
