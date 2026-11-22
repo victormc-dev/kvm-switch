@@ -98,6 +98,7 @@ function registerIpcHandlers(): void {
   ipcMain.on('hid:mouseButton', (_e, button: number, down: boolean) => hidController.sendMouseButton(button, down))
   ipcMain.on('hid:mouseWheel', (_e, delta: number) => hidController.sendMouseWheel(delta))
   ipcMain.on('hid:key', (_e, payload) => hidController.sendKey(payload))
+  ipcMain.on('hid:releaseAll', () => hidController.releaseAllKeys())
   ipcMain.on('hid:text', (_e, text: string) => hidController.sendText(text))
 
   // 剪贴板

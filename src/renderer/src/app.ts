@@ -484,11 +484,16 @@ export class KvmApp {
       btn.classList.add('active')
       btn.innerHTML = '<span>🖱️</span> 捕获中（Ctrl+Alt+B 释放）'
       container.classList.add('capturing')
+      // 进入捕获前清零：快捷键本身按下的 Ctrl/Alt 未走正常 down/up 配对
+      window.kvm.releaseAllKeys()
       this.toast('键鼠捕获已开启，本机光标已锁定', 'success')
     } else {
       btn.classList.remove('active')
       btn.innerHTML = '<span>🖱️</span> 捕获键鼠'
       container.classList.remove('capturing')
+      // 强制释放所有键：快捷键退出时 Ctrl/Alt 的 keyup 会被丢弃，
+      // 不清零会导致目标机认为修饰键一直按着（后续每个键都带 Ctrl）
+      window.kvm.releaseAllKeys()
       if (this.lastCaptureWasOn) this.toast('键鼠捕获已释放')
     }
     this.lastCaptureWasOn = capturing

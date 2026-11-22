@@ -29,6 +29,7 @@ const api: KvmApi = {
   sendMouseButton: (button, down) => ipcRenderer.send('hid:mouseButton', button, down),
   sendMouseWheel: (delta) => ipcRenderer.send('hid:mouseWheel', delta),
   sendKey: (payload) => ipcRenderer.send('hid:key', payload),
+  releaseAllKeys: () => ipcRenderer.send('hid:releaseAll'),
   sendText: (text) => ipcRenderer.send('hid:text', text),
 
   // 剪贴板

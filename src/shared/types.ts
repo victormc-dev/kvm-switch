@@ -109,6 +109,7 @@ export interface KvmApi {
   sendMouseButton(button: number, down: boolean): void
   sendMouseWheel(delta: number): void
   sendKey(payload: KeyPayload): void
+  releaseAllKeys(): void
   sendText(text: string): void
   // 剪贴板
   readClipboardText(): Promise<string>

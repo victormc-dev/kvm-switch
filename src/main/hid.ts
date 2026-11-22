@@ -320,6 +320,13 @@ export class HidController extends EventEmitter {
     this.sendKeyboardReport()
   }
 
+  /** 释放所有按键（退出捕获时调用，防止修饰键卡在目标机） */
+  releaseAllKeys(): void {
+    this.modifierState = 0
+    this.pressedKeys.clear()
+    this.sendKeyboardReport() // 全空报告 = 目标机释放所有键
+  }
+
   /** 发送文本（逐字符，带限速，防止 CH32V307 串口→USB 拥塞丢字符） */
   async sendText(text: string): Promise<void> {
     for (const ch of text) {
