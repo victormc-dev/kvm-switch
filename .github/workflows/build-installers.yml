@@ -1,0 +1,76 @@
+name: 构建全平台安装包
+
+# 推送到 main（auto-release.sh 提交后即触发）或打 v* 标签时，
+# 在 Windows / macOS / Linux 三个 runner 上并行构建安装包并上传为 Artifact。
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: 构建 ${{ matrix.name }} 安装包
+    strategy:
+      fail-fast: false   # 单个平台失败不影响其余平台
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+            args: --win
+          - os: macos-latest
+            name: macos
+            args: --mac
+          - os: ubuntu-latest
+            name: linux
+            args: --linux
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: 检出源码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 安装 Linux 构建依赖
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fakeroot dpkg libudev-dev libusb-1.0-0-dev libfuse2
+
+      - name: 安装 npm 依赖
+        run: npm ci
+
+      # 原生依赖：node-hid / serialport 必须按 Electron 的 ABI 重编译，
+      # 否则运行时报 NODE_MODULE_VERSION 不匹配。install-app-deps 会优先
+      # 下载匹配 Electron 的 prebuilt，取不到再本地源码编译。
+      - name: 为 Electron 重编译原生模块
+        run: npx electron-builder install-app-deps
+
+      - name: 编译前端/主进程
+        run: npm run build
+
+      - name: 打包 ${{ matrix.name }} 安装包
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'   # 无签名证书时跳过 macOS 签名
+        run: npx electron-builder ${{ matrix.args }} --publish never
+
+      - name: 上传安装包 Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kvm-switch-${{ matrix.name }}
+          path: |
+            release/*.exe
+            release/*.dmg
+            release/*.AppImage
+            release/*.deb
+          if-no-files-found: error
+          retention-days: 30
