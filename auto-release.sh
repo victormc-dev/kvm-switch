@@ -41,7 +41,12 @@ if [ "$NO_PUSH" = "0" ]; then
   PUSH_SCRIPT="C:/Users/ASUS/.workbuddy/skills/git-push-no-hang/scripts/git_push.py"
   if [ -f "$PUSH_SCRIPT" ]; then
     echo "=== 推送 GitHub ==="
-    python "$PUSH_SCRIPT" -b main
+    # 本机代理偶发 502，先常规推；失败则清掉代理环境变量直连重试
+    if ! python "$PUSH_SCRIPT" -b main; then
+      echo "代理推送失败，尝试绕过代理直连..."
+      env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy \
+        python "$PUSH_SCRIPT" -b main
+    fi
   else
     echo "跳过推送：未找到 $PUSH_SCRIPT"
   fi
