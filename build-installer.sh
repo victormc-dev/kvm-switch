@@ -30,7 +30,18 @@ npx electron-builder --win --x64 --config.directories.output="$TMP_OUT"
 
 echo "=== 3/3 复制产物到 release/ ==="
 mkdir -p release
-cp "$TMP_OUT"/*.exe release/ 2>/dev/null || true
+VERSION="$(node -p "require('./package.json').version")"
+# 清理旧版本 EXE（find -delete 会被沙箱拦截，改用 Python）
+python -c "
+import os, glob
+for f in glob.glob('release/*.exe'):
+    if '$VERSION' not in f:
+        try: os.remove(f)
+        except OSError: pass
+" 2>/dev/null || true
+# 只复制当前版本，避免 Temp 里堆积的旧版回流
+cp "$TMP_OUT/KVM Switch Setup $VERSION.exe" release/ 2>/dev/null || true
+cp "$TMP_OUT/KVM Switch $VERSION.exe" release/ 2>/dev/null || true
 
 echo ""
 echo "=== 打包完成，产物： ==="

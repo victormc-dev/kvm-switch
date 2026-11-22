@@ -1,6 +1,6 @@
 {
   "name": "kvm-switch",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "基于 USB UVC 采集卡 + USB HID 双头控制的跨平台 KVM 软件",
   "author": "KVM Switch",
   "main": "out/main/index.js",
