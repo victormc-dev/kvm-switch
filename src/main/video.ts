@@ -1,6 +1,6 @@
 import { BrowserWindow } from 'electron'
 import { EventEmitter } from 'events'
-import type { VideoSource, VideoStatus } from '../shared/types'
+import type { VideoSource, AudioSource, VideoStatus } from '../shared/types'
 
 /**
  * 视频采集管理器（主进程侧）
@@ -62,6 +62,37 @@ export class VideoCaptureManager extends EventEmitter {
     }
 
     return videoSources
+  }
+
+  /** 枚举所有可用的音频输入设备（采集卡音频、麦克风等） */
+  async listAudioSources(): Promise<AudioSource[]> {
+    const audioSources: AudioSource[] = []
+
+    if (this.mainWindow) {
+      try {
+        const devices = await this.mainWindow.webContents.executeJavaScript(`
+          (async () => {
+            try {
+              const devices = await navigator.mediaDevices.enumerateDevices()
+              return devices
+                .filter(d => d.kind === 'audioinput')
+                .map(d => ({
+                  id: d.deviceId,
+                  label: d.label || '音频输入设备',
+                  kind: d.kind
+                }))
+            } catch (e) {
+              return []
+            }
+          })()
+        `)
+        audioSources.push(...devices)
+      } catch {
+        // 忽略枚举失败
+      }
+    }
+
+    return audioSources
   }
 
   /** 更新状态（由渲染进程上报实际连接结果） */

@@ -69,6 +69,7 @@ function createWindow(): void {
 function registerIpcHandlers(): void {
   // 视频源
   ipcMain.handle('video:listSources', () => videoManager.listSources())
+  ipcMain.handle('audio:listSources', () => videoManager.listAudioSources())
   ipcMain.handle('video:getStatus', () => videoManager.getStatus())
   ipcMain.handle('video:updateStatus', (_e, partial) => videoManager.updateStatus(partial))
 

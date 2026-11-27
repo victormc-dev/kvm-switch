@@ -8,6 +8,7 @@ const api: KvmApi = {
     return ipcRenderer.invoke('video:updateStatus', { sourceId: id, connected: true })
   },
   getVideoStatus: () => ipcRenderer.invoke('video:getStatus'),
+  listAudioSources: () => ipcRenderer.invoke('audio:listSources'),
   onVideoFrame: (callback: (frame: ArrayBuffer) => void) => {
     ipcRenderer.on('video-frame', (_e, frame: ArrayBuffer) => callback(frame))
   },

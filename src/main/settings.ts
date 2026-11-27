@@ -11,6 +11,9 @@ const DEFAULT_HOTKEYS: HotkeyConfig[] = [
 
 const DEFAULT_SETTINGS: AppSettings = {
   videoSourceId: null,
+  audioSourceId: null,
+  volume: 0.8,
+  muted: false,
   hotkeys: DEFAULT_HOTKEYS,
   autoCapture: true,
   showOsd: true,

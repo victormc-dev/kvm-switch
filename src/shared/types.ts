@@ -10,6 +10,12 @@ export interface VideoSource {
   frameRate?: number
 }
 
+export interface AudioSource {
+  id: string
+  label: string
+  kind: string
+}
+
 export interface VideoStatus {
   connected: boolean
   sourceId: string | null
@@ -61,6 +67,9 @@ export interface HotkeyConfig {
 
 export interface AppSettings {
   videoSourceId: string | null
+  audioSourceId: string | null
+  volume: number
+  muted: boolean
   hotkeys: HotkeyConfig[]
   autoCapture: boolean
   showOsd: boolean
@@ -70,6 +79,7 @@ export interface AppSettings {
 
 export interface DeviceListResult {
   videoSources: VideoSource[]
+  audioSources: AudioSource[]
   hidDevices: HidDeviceInfo[]
 }
 
@@ -94,6 +104,8 @@ export interface KvmApi {
   selectVideoSource(id: string): Promise<VideoStatus>
   getVideoStatus(): Promise<VideoStatus>
   onVideoFrame(callback: (frame: ArrayBuffer) => void): void
+  // 音频
+  listAudioSources(): Promise<AudioSource[]>
   // HID 设备
   listHidDevices(): Promise<HidDeviceInfo[]>
   connectHid(path: string): Promise<HidStatus>

@@ -1,5 +1,6 @@
 import type {
   VideoSource,
+  AudioSource,
   HidDeviceInfo,
   AppSettings,
   VideoStatus,
@@ -16,6 +17,10 @@ export class KvmApp {
   private videoElement: HTMLVideoElement | null = null
   private mediaStream: MediaStream | null = null
   private videoSources: VideoSource[] = []
+  private audioSources: AudioSource[] = []
+  private selectedAudioId: string | null = null
+  private audioVolume = 0.8
+  private audioMuted = false
   private hidDevices: HidDeviceInfo[] = []
   private serialPorts: SerialPortInfo[] = []
   private settings: AppSettings | null = null
@@ -47,7 +52,7 @@ export class KvmApp {
     this.addLog('KVM Switch 启动', 'info')
     await this.loadSettings()
     await this.refreshDevices()
-    this.addLog(`枚举完成：${this.videoSources.length} 视频源 / ${this.serialPorts.length} 串口 / ${this.hidDevices.length} HID`, 'info')
+    this.addLog(`枚举完成：${this.videoSources.length} 视频源 / ${this.audioSources.length} 音频源 / ${this.serialPorts.length} 串口 / ${this.hidDevices.length} HID`, 'info')
     await this.autoConnect()
     this.updateStatusBadges()
   }
@@ -94,6 +99,9 @@ export class KvmApp {
               <span>⛶</span> 全屏
             </button>
             <div class="divider"></div>
+            <button class="btn" id="btn-mute" title="静音/取消静音">🔊</button>
+            <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="80" title="音量" />
+            <div class="divider"></div>
             <button class="btn" id="btn-osd" title="显示/隐藏信息面板">信息面板</button>
             <button class="btn" id="btn-clipboard" title="把本机剪贴板文本输入到目标机">📋 同步剪贴板</button>
             <button class="btn" id="btn-refresh" title="刷新设备列表">刷新设备</button>
@@ -109,6 +117,16 @@ export class KvmApp {
               <span class="count" id="video-count">0 个设备</span>
             </div>
             <div class="section-body" id="video-list">
+              <div class="list-empty">正在枚举设备...</div>
+            </div>
+          </div>
+
+          <div class="panel-section">
+            <div class="section-title">
+              <span>🔊 音频源</span>
+              <span class="count" id="audio-count">0 个设备</span>
+            </div>
+            <div class="section-body" id="audio-list">
               <div class="list-empty">正在枚举设备...</div>
             </div>
           </div>
@@ -161,6 +179,10 @@ export class KvmApp {
     document.getElementById('btn-clipboard')!.addEventListener('click', () => this.syncClipboard())
     document.getElementById('btn-refresh')!.addEventListener('click', () => this.refreshDevices())
     document.getElementById('btn-settings')!.addEventListener('click', () => this.openSettings())
+    document.getElementById('btn-mute')!.addEventListener('click', () => this.toggleMute())
+    document.getElementById('volume-slider')!.addEventListener('input', (e) => {
+      this.setVolume(Number((e.target as HTMLInputElement).value) / 100)
+    })
     document.getElementById('log-clear')!.addEventListener('click', () => {
       this.logs = []
       this.renderLog()
@@ -210,6 +232,14 @@ export class KvmApp {
     // 视频源
     this.videoSources = await window.kvm.listVideoSources()
     this.renderVideoList()
+
+    // 音频源
+    this.audioSources = await window.kvm.listAudioSources()
+    // 若尚未选音频源，自动匹配采集卡音频
+    if (!this.selectedAudioId && this.audioSources.length) {
+      this.selectedAudioId = this.autoMatchAudio()?.id ?? null
+    }
+    this.renderAudioList()
 
     // 串口桥（CH32V307）
     this.serialPorts = await window.kvm.listSerialPorts()
@@ -299,6 +329,52 @@ export class KvmApp {
     })
   }
 
+  /** 自动匹配采集卡音频：按关键词优先，避免误选麦克风/蓝牙 */
+  private autoMatchAudio(): AudioSource | null {
+    const keywords = ['capture', 'hdmi', 'ocol', 'ocap', 'usb audio', '视频采集', '采集卡']
+    const lower = (s: string) => s.toLowerCase()
+    for (const kw of keywords) {
+      const hit = this.audioSources.find((a) => lower(a.label).includes(kw))
+      if (hit) return hit
+    }
+    return null
+  }
+
+  private renderAudioList(): void {
+    const list = document.getElementById('audio-list')!
+    const count = document.getElementById('audio-count')!
+    count.textContent = `${this.audioSources.length} 个设备`
+
+    if (this.audioSources.length === 0) {
+      list.innerHTML = `<div class="list-empty">未检测到音频输入设备<br/><span class="list-hint">采集卡的音频口需单独接入</span></div>`
+      return
+    }
+
+    list.innerHTML = this.audioSources
+      .map(
+        (a) => `
+        <div class="device-item ${a.id === this.selectedAudioId ? 'selected' : ''}" data-audio-id="${this.escapeHtml(a.id)}">
+          <div class="dev-icon">🔊</div>
+          <div class="dev-info">
+            <div class="dev-name">${this.escapeHtml(a.label)}</div>
+            <div class="dev-sub">音频输入</div>
+          </div>
+          ${a.id === this.selectedAudioId ? '<div class="dev-check">✓</div>' : ''}
+        </div>`
+      )
+      .join('')
+
+    list.querySelectorAll('[data-audio-id]').forEach((el) => {
+      el.addEventListener('click', () => {
+        const id = (el as HTMLElement).dataset.audioId!
+        this.selectedAudioId = id
+        this.renderAudioList()
+        // 若正在预览，重连以应用新音频设备
+        if (this.selectedVideoId) this.selectVideo(this.selectedVideoId)
+      })
+    })
+  }
+
   private renderHidList(): void {
     const list = document.getElementById('hid-list')!
     const count = document.getElementById('hid-count')!
@@ -361,8 +437,12 @@ export class KvmApp {
 
     try {
       // 在渲染进程直接调用 getUserMedia（低延迟）
+      // 音频必须指定采集卡的音频 deviceId，否则会误用系统默认输入（如蓝牙麦克风）导致无声
+      const audioConstraint: MediaTrackConstraints | boolean = this.selectedAudioId
+        ? { deviceId: { exact: this.selectedAudioId }, echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+        : true
       const constraints: MediaStreamConstraints = {
-        audio: true,
+        audio: audioConstraint,
         video: {
           deviceId: { exact: id },
           width: { ideal: 1920 },
@@ -375,6 +455,11 @@ export class KvmApp {
       this.videoElement = document.getElementById('video-el') as HTMLVideoElement
       this.videoElement.srcObject = this.mediaStream
       this.videoElement.style.display = ''
+      // 应用音量/静音设置
+      this.videoElement.volume = this.audioVolume
+      this.videoElement.muted = this.audioMuted
+      const audioTrack = this.mediaStream.getAudioTracks()[0]
+      this.addLog(audioTrack ? `音频已接入：${audioTrack.label || this.selectedAudioId}` : '警告：未获取到音频轨，目标机声音可能无法播放', audioTrack ? 'success' : 'error')
 
       const track = this.mediaStream.getVideoTracks()[0]
       const settings = track.getSettings()
@@ -412,6 +497,44 @@ export class KvmApp {
       this.videoElement.style.display = 'none'
     }
     document.getElementById('empty-state')!.style.display = ''
+  }
+
+  /** 切换静音 */
+  private toggleMute(): void {
+    this.audioMuted = !this.audioMuted
+    this.applyAudioSettings()
+    this.toast(this.audioMuted ? '已静音' : '已取消静音', 'info')
+  }
+
+  /** 设置音量 */
+  private setVolume(v: number): void {
+    this.audioVolume = Math.max(0, Math.min(1, v))
+    if (this.audioVolume > 0 && this.audioMuted) this.audioMuted = false
+    this.applyAudioSettings()
+  }
+
+  /** 把音量/静音应用到 video 元素并持久化 */
+  private applyAudioSettings(): void {
+    if (this.videoElement) {
+      this.videoElement.volume = this.audioVolume
+      this.videoElement.muted = this.audioMuted
+    }
+    const btn = document.getElementById('btn-mute')
+    if (btn) btn.textContent = this.audioMuted || this.audioVolume === 0 ? '🔇' : '🔊'
+    const slider = document.getElementById('volume-slider') as HTMLInputElement | null
+    if (slider) slider.value = String(Math.round(this.audioVolume * 100))
+    this.saveAudioSettings()
+  }
+
+  /** 保存音频设置（不阻塞） */
+  private saveAudioSettings(): void {
+    if (!this.settings) return
+    window.kvm.saveSettings({
+      ...this.settings,
+      audioSourceId: this.selectedAudioId,
+      volume: this.audioVolume,
+      muted: this.audioMuted
+    }).then((ok) => { if (ok) this.settings = { ...this.settings!, audioSourceId: this.selectedAudioId, volume: this.audioVolume, muted: this.audioMuted } })
   }
 
   // ============ HID 连接 ============
@@ -689,6 +812,9 @@ export class KvmApp {
     if (this.settings.videoSourceId) {
       this.selectedVideoId = this.settings.videoSourceId
     }
+    if (this.settings.audioSourceId) this.selectedAudioId = this.settings.audioSourceId
+    if (typeof this.settings.volume === 'number') this.audioVolume = this.settings.volume
+    this.audioMuted = this.settings.muted ?? false
     this.showOsd = this.settings.showOsd
   }
 
