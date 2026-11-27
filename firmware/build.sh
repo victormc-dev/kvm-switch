@@ -9,6 +9,11 @@
 
 set -e
 
+# ---------- 切换到脚本所在目录 ----------
+# make 依赖当前目录下的 Makefile，无论从哪里调用都先 cd 过来
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$DIR"
+
 # ---------- 自动探测 MRS 安装目录 ----------
 MRS_ROOT=""
 for d in \
