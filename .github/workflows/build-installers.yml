@@ -88,3 +88,64 @@ jobs:
             release/*.deb
           if-no-files-found: error
           retention-days: 30
+
+  # 三平台构建全部成功后，自动创建 GitHub Release 并上传安装包。
+  # 版本号取自 package.json（auto-release.sh 推送前已 patch +1），
+  # 因此每次 push main 都会发布一个新版本，无需手动打 tag。
+  release:
+    name: 发布 Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # 创建 Release / tag / 上传资产
+    steps:
+      - name: 检出源码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js（读取版本号）
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 下载三平台安装包 Artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: kvm-switch-*
+          path: artifacts
+
+      - name: 收集安装包资产
+        id: assets
+        run: |
+          mapfile -d '' files < <(find artifacts -type f \
+            \( -name '*.exe' -o -name '*.dmg' -o -name '*.AppImage' -o -name '*.deb' \) \
+            -print0)
+          printf '找到 %d 个安装包\n' "${#files[@]}"
+          printf '%s\n' "${files[@]}"
+          # 用 NUL 分隔写入环境文件，兼容含空格的文件名
+          {
+            echo 'files<<EOF'
+            printf '%s\n' "${files[@]}"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 创建 Release 并上传安装包
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ASSETS: ${{ steps.assets.outputs.files }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v$VERSION"
+          echo "发布版本: $TAG"
+
+          mapfile -t files <<< "$ASSETS"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG 已存在，更新资产"
+            gh release upload "$TAG" "${files[@]}" --clobber
+          else
+            echo "创建新 Release $TAG"
+            gh release create "$TAG" "${files[@]}" \
+              --title "$TAG" \
+              --generate-notes
+          fi
+
+          echo "发布完成: https://github.com/${{ github.repository }}/releases/tag/$TAG"
