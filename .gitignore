@@ -5,6 +5,7 @@ release2
 out
 logs
 .workbuddy
+ci-artifacts
 *.log
 .DS_Store
 
@@ -19,3 +20,7 @@ firmware/Core/*.o
 firmware/Debug/*.o
 firmware/Peripheral/src/*.o
 firmware/Startup/*.o
+
+# 下载构建产物的临时文件
+.win_blob.tmp
+fetch_win.py

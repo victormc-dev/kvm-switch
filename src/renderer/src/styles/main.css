@@ -502,7 +502,10 @@ body {
 /* ============ 实时日志面板 ============ */
 .log-panel {
   flex: 1;
-  min-height: 0;
+  /* 保底高度：设备列表填满时，其他卡片的 max-height 会挤压 flex-basis:0
+     的日志卡片到接近 0，导致日志看不见、不再贴底。保底后日志始终占据
+     底部空间，其余卡片内部滚动。 */
+  min-height: 180px;
   display: flex;
   flex-direction: column;
 }
